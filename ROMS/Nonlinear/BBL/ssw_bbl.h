@@ -476,7 +476,11 @@
 !  Load sediment properties, stresses, and roughness from previous time
 !  step (stresses are in m2 s-2).
 !
-          d50=bottom(i,j,isd50)
+          d50=bottom(i,j,isd50)+eps      ! guard against d50=0 at dry/masked
+                                          ! cells, which otherwise divides by
+                                          ! zero further down (ripple-height
+                                          ! sheet-flow branch and its d50-
+                                          ! derived terms: lamanorb, dolam1)
           rhos=bottom(i,j,idens)/(rho(i,j,1)+1000.0_r8)
           wsedr=bottom(i,j,iwsed)
           Taucr=bottom(i,j,itauc)

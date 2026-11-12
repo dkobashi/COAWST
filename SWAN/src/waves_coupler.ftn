@@ -197,6 +197,7 @@
 
 !     integer, dimension(2) :: src_grid_dims, dst_grid_dims
       integer, allocatable :: start(:), length(:)
+      integer :: wavmxe, wavmns
 !
 !-----------------------------------------------------------------------
 !  Begin initialization phase.
@@ -287,6 +288,12 @@
 !
       CALL GlobalSegMap_init (GlobalSegMap_G(ng)%GSMapSWAN, start,      &
      &                        length, 0, WAV_COMM_WORLD, WAVid)
+      wavmxe=MAXVAL(start+length-1)
+      wavmns=MINVAL(start)
+      WRITE(SCREEN,'(a,i0,a,i0,a,i0,a,i0)')                            &
+     &  'DEBUGGSMAP WAV rank=', MyRank, ' Jsize=', Jsize,               &
+     &  ' min_start=', wavmns, ' max_end=', wavmxe
+      FLUSH(SCREEN)
       deallocate (start)
       deallocate (length)
 

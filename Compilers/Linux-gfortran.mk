@@ -93,10 +93,17 @@ ifdef USE_ROMS
            FFLAGS += -fbacktrace
            FFLAGS += -fcheck=all
            FFLAGS += -fsanitize=address -fsanitize=undefined
-           FFLAGS += -finit-real=nan -ffpe-trap=invalid,zero,overflow
+           FFLAGS += -ffpe-trap=invalid,zero,overflow
  else
            FFLAGS += -O3
-           FFLAGS += -ffast-math
+# -ffast-math implies -ffinite-math-only (assume no NaN/Inf can ever occur) and
+# -funsafe-math-optimizations (allows non-IEEE-associative reordering). Root-caused
+# to a silent temp/salt-only NaN corruption in NYB's TS_MPDATA tracer advection that
+# ROMS's own blow-up/MaxDensity check never caught -- exactly the failure mode
+# -ffinite-math-only licenses (isnan()-style checks can be optimized away or behave
+# incorrectly once the compiler assumes NaN can't happen). Removed for correctness;
+# -O3 alone is still enabled.
+#          FFLAGS += -ffast-math
  endif
  ifdef SHARED
           LDFLAGS += -Wl,-rpath,$(BUILD_DIR)
@@ -182,6 +189,24 @@ ifdef USE_NETCDF4
     NETCDF_INCDIR ?= $(shell $(NF_CONFIG) --prefix)/include
              LIBS += $(shell $(NF_CONFIG) --flibs)
            INCDIR += $(NETCDF_INCDIR) $(INCDIR)
+# System libhdf5_serial.so.103 (pulled in transitively by nf-config's own
+# -lnetcdff, from /usr/lib/x86_64-linux-gnu) has its own undefined curl
+# symbols versioned @CURL_OPENSSL_4 that a recent unattended-upgrades curl
+# package update (2026-07, ubuntu10.9 -> ubuntu10.11) no longer resolves
+# implicitly at link time -- ld's --as-needed drops -lcurl unless it's
+# explicitly present AFTER the point the need is introduced. Similarly,
+# conda's own -lnetcdf (linked first, from the active env's lib dir) pulls
+# in libs2n.so.1 (AWS S3 support in conda-forge's hdf5 build), which needs
+# an OpenSSL 3.4 symbol not resolved without an explicit -lcrypto either.
+# Neither is a real code dependency -- both are purely to satisfy other
+# .so files' own transitive undefined symbols that ld no longer resolves
+# for free. Real, reproduced link failure on this machine (2026-07-27);
+# harmless everywhere else (a no-op if these libraries are never actually
+# needed by anything requesting them).
+             LIBS += /usr/lib/x86_64-linux-gnu/libcurl.so.4
+ifdef CONDA_PREFIX
+             LIBS += $(CONDA_PREFIX)/lib/libcrypto.so.3
+endif
 else
     NETCDF_INCDIR ?= /opt/gfortransoft/serial/netcdf3/include
     NETCDF_LIBDIR ?= /opt/gfortransoft/serial/netcdf3/lib

@@ -42,7 +42,7 @@
 
       character (len=1 ), parameter :: blank = ' '
       character (len=40) :: KeyWord
-      character (len=80) :: Cname
+      character (len=256) :: Cname
       character (len=160) :: tempname
       character (len=160) :: line
       character (len=160), dimension(100) :: Cval

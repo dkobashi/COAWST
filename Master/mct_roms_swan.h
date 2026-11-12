@@ -147,6 +147,11 @@
       END DO
       CALL GlobalSegMap_init (GlobalSegMap_G(ng)%GSMapROMS,             &
      &                        start, length, 0, OCN_COMM_WORLD, OCNid)
+      WRITE(stdout,'(a,i0,a,i0,a,i0,a,i0,a,i0)')                       &
+     &  'DEBUGGSMAP OCN rank=', MyRank, ' tile=', tile,                 &
+     &  ' Jsize=', Jsize, ' min_start=', MINVAL(start),                &
+     &  ' max_end=', MAXVAL(start+length-1)
+      FLUSH(stdout)
 !
 !  Deallocate working arrays.
 !

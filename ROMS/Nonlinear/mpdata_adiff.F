@@ -142,6 +142,20 @@
 !     real(r8), parameter :: Large = 1.0E+20_r8
       real(r8), parameter :: eps  = 1.0E-18_r8
       real(r8), parameter :: eps2 = 1.0E-10_r8
+!
+!  The U/V/W near-singularity guards below were originally `.le.0.0_r8`,
+!  which only screens out exact zero or negative tracer values -- not a
+!  land-cell tracer value like 4.6e-11 (a floating-point residual left by
+!  step3d_t.F's t=t*rmask reset, not exact zero), which slipped through
+!  and produced a gradient ratio A/B/C of exactly -1.0 at a land-adjacent
+!  cell. That singularity blew up one of MPDATA_HOT's reciprocal
+!  correction terms (e.g. 1/(1-ABS(A))) toward overflow -- a
+!  temperature/salinity-only NaN corruption that struck instantaneously
+!  with no ramp-up, in an otherwise smooth patch with tiny physical
+!  Courant numbers, and was never caught by ROMS's own blow-up check
+!  (which doesn't look at tracers). Tightened to `.le.eps2` (already a
+!  defined constant, used elsewhere in this routine) so it also screens
+!  out these near-zero residuals.
 
       real(r8) :: A, B, Tmax, Tmin, Um, Vm, X, Y, Z
       real(r8) :: cff, cff1, cff2, sig_alfa
@@ -343,8 +357,8 @@
         END DO
         DO k=1,N(ng)
           DO i=IstrU-1,Iendp2
-            IF ((Ta(i-1,j,k).le.0.0_r8).or.                             &
-     &          (Ta(i  ,j,k).le.0.0_r8).or.                             &
+            IF ((Ta(i-1,j,k).le.eps2).or.                               &
+     &          (Ta(i  ,j,k).le.eps2).or.                               &
      &          (ABS(Ta(i-1,j,k)-Ta(i,j,k)).le.eps2)) THEN
               Ua(i,j,k)=0.0_r8
             ELSE
@@ -565,8 +579,8 @@
         END DO
         DO k=1,N(ng)
           DO i=IstrU-1,Iendp1
-            IF ((Ta(i,j-1,k).le.0.0_r8).or.                             &
-     &          (Ta(i,j  ,k).le.0.0_r8).or.                             &
+            IF ((Ta(i,j-1,k).le.eps2).or.                               &
+     &          (Ta(i,j  ,k).le.eps2).or.                               &
      &          (ABS(Ta(i,j-1,k)-Ta(i,j,k)).le.eps2)) THEN
               Va(i,j,k)=0.0_r8
             ELSE
@@ -767,8 +781,8 @@
       DO j=JstrV-1,Jendp1
         DO k=1,N(ng)-1
           DO i=IstrU-1,Iendp1
-            IF ((Ta(i,j,k  ).le.0.0_r8).or.                             &
-     &          (Ta(i,j,k+1).le.0.0_r8).or.                             &
+            IF ((Ta(i,j,k  ).le.eps2).or.                               &
+     &          (Ta(i,j,k+1).le.eps2).or.                               &
      &          (ABS(Ta(i,j,k)-Ta(i,j,k+1)).le.eps2)) THEN
               Wa(i,j,k)=0.0_r8
             ELSE

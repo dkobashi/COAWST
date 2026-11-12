@@ -69,9 +69,8 @@
 ifdef USE_ROMS
  ifdef USE_DEBUG
            FFLAGS += -g
-#           FFLAGS += -check all
-#           FFLAGS += -check bounds
-#           FFLAGS += -traceback
+           FFLAGS += -check bounds
+           FFLAGS += -traceback
 #          Disabled for now because it requires libm.a
 #          https://community.intel.com/t5/Intel-Fortran-Compiler/ifx-IFX-2023-2-0-20230721-linker-problems-with-check-uninit/m-p/1527816
 #          FFLAGS += -check uninit
@@ -162,6 +161,13 @@ ifdef USE_NETCDF4
     NETCDF_INCDIR ?= $(shell $(NF_CONFIG) --prefix)/include
              LIBS += $(shell $(NF_CONFIG) --flibs)
            INCDIR += $(NETCDF_INCDIR) $(INCDIR)
+#          nf-config --flibs only emits -L (link-time search path), never
+#          -Wl,-rpath, so without this the executable has no runtime record
+#          of where its netcdf came from and falls back to whatever netcdf
+#          happens to be on LD_LIBRARY_PATH/the default loader path at run
+#          time -- on this machine that's the system (gcc-built) netcdf,
+#          not the one this binary was actually compiled/linked against.
+          LDFLAGS += -Wl,-rpath,$(shell $(NF_CONFIG) --prefix)/lib
 else
     NETCDF_INCDIR ?= /opt/intelsoft/serial/netcdf3/include
     NETCDF_LIBDIR ?= /opt/intelsoft/serial/netcdf3/lib
@@ -191,7 +197,13 @@ ifdef USE_MPI
          CPPFLAGS += -DMPI
  ifdef USE_MPIF90
   ifeq ($(which_MPI), intel)
-               FC := mpiifort
+               FC := mpiifx
+# mpiifort wraps classic `ifort`, which Intel deprecated/removed from recent
+# oneAPI releases (this file is specifically the ifx makefile) -- confirmed
+# on this machine `mpiifort` fails with "ifort: not found" while `mpiifx`
+# correctly invokes ifx. mpiifort was the original value here; changed, not
+# just overridden via env var, since this is a `:=` (immediate) assignment
+# that an exported FC from the calling shell can't override.
   else
                FC := mpif90
   endif
